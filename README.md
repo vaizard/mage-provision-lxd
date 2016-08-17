@@ -1,4 +1,4 @@
-# mage.lxd-profisioning
+# mage.lxd-provisioning
 
 An ansible recipe to manage lxd containers on a host. Adding the following to a playbook called **test-lxd.yml** and running `ansible-playbook -b --ask-become-pass /home/killua/run-all.yaml` will:
 
