@@ -1,0 +1,15 @@
+---
+- name: Making sure lxd containers are present (create and start otherwise)
+  local_action:
+  module: "lxd"
+  name: "{{ item.name }}"
+  state: started
+  source:
+    type: image
+    mode: pull
+    server: https://images.linuxcontainers.org
+    protocol: lxd
+    alias: "{{ item.image }}"
+  profiles: ["default"]
+  wait_for_ipv4_addresses: true
+  timeout: 600  

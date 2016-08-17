@@ -12,8 +12,47 @@ This recipe requires
 - ansible 2.2 or newer
 - lxd
 
+
+**Designing lxd provisioning**
+
+Setting up lxd containers is fairly straightforward thanks to the lxd plugin comming with ansible 2.2. The tough nut to crack is networking, because lxd doesn't have (at present) networking api in place. So what we do is the following:
+
+- setup a nginx-based reverse proxy container (mageproxy) 
+- upon lxd container creation,
+  - get its assigned ip adress
+  - use iptables (nat routing) to get the container connected
+  - modify one of the following mageproxy files
+    - /etc/hosts (add <ip> <containername>)
+    - /etc/nginx/upstream.conf (do the same)
+
+
+2. 
+
 **test-lxd.yml playbook**
 
+```
+- hosts: localhost
+  roles:
+    - role: "tomashavlas.provision_docker"
+      provision_lxd_inventory:
+        - name: "ubu_test_1"
+          image: "ubuntu/xenial/amd64"
+          nat:
+            - extif: enp3s0
+              intif: lxdbr0
+              extport: 8080
+              intport: 8080
+          proxy:
+            - name: "ubu1.vaizard.xyz"
+              path: "/postgres/"
+              pass: "
+        - name: "ubu_test_2"
+          image: "ubuntu/xenial/amd64"
+          proxy:
+            - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+```
+
+**using the lxd plugin without this role**
 ```
 - hosts: localhost
   connection: local

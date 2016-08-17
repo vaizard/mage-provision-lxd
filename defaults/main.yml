@@ -1,0 +1,10 @@
+---
+# list of provisioned Docker containers with parameters
+provision_lxd_inventory: []
+## name of container
+#  - name: string
+## base image of container
+#    image: string
+## OPTIONAL: list of container nat rules
+#    nat: [ string ]
+
