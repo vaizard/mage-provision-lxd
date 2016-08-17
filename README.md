@@ -34,7 +34,7 @@ Setting up lxd containers is fairly straightforward thanks to the lxd plugin com
 - hosts: localhost
   roles:
     - role: "mage.lxd-provisioning"
-      lxd-provisioning_inventory:
+      lxd_provisioning_inventory:
         - name: "ubu_test_1"
           image: "ubuntu/xenial/amd64"
           nat:
