@@ -1,18 +1,9 @@
 ---
-# list of provisioned Docker containers with parameters
-#provision_lxd_inventory: []
-## name of container
-#  - name: string
-## base image of container
-#    image: string
-## OPTIONAL: list of container nat rules
-#    nat: [ string ]
 
-lxd_provisioning_inventory:
-   - name: ubutest1
-     image: ubuntu/xenial/amd64
-   - name: ubutest2
-     image: ubuntu/xenial/amd64
+# list of provisioned LXD containers with parameters
 
+provision_lxd_inventory: []
 
-     
+#  - name: <container name>
+#    image: <base image>
+#    nat: [ <nat rules> ]

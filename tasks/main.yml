@@ -1,18 +1,43 @@
 ---
-- name: Making sure lxd containers are present (create and start otherwise)
+
+- name: "Making sure lxd containers are present (create and start otherwise)"
   local_action:
-  module: "lxd"
-  name: "{{ item.name }}"
-  state: started
-  source:
-    type: image
-    mode: pull
-    server: https://images.linuxcontainers.org
-    protocol: lxd
-    alias: "{{ item.image }}"
-  profiles: ["default"]
-  wait_for_ipv4_addresses: true
-  timeout: 600  
+    module: "lxd_container"
+    name: "{{ item.name }}"
+    state: started
+    source:
+      type: image
+      mode: pull
+      server: https://images.linuxcontainers.org
+      protocol: lxd
+      alias: "{{ item.image }}"
+    profiles: ["default"]
+    wait_for_ipv4_addresses: true
+    timeout: 600
   with_items: "{{ lxd_provisioning_inventory }}"
   when: ((item.name is defined and item.name|trim) and
          (item.image is defined and item.image|trim))
+
+- name: "Making sure we can use the lxd connector on newly created containers"
+  local_action: add_host name="{{ item.name }}" ansible_connection=lxd
+  with_items: "{{ lxd_provisioning_inventory }}"
+  when: (item.name is defined and item.name|trim)
+
+# TODO repleace ansible_distribution condition with something that actually works
+- name: "Making sure all debian based containers have python installed"
+  delegate_to: "{{ item.name }}"
+  raw: "[[ `dpkg -s python` ]] || apt-get install -y python"
+  with_items: "{{ lxd_provisioning_inventory }}"
+  when: ((item.name is defined and item.name|trim) and (ansible_distribution in [ 'Ubuntu', 'Debian' ]))
+
+- name: "Making sure all gentoo based containers have python installed"
+  delegate_to: "{{ item.name }}"
+  raw: "emerge -u python eix"
+  with_items: "{{ lxd_provisioning_inventory }}"
+  when: ((item.name is defined and item.name|trim) and (ansible_distribution in [ 'Gentoo' ]))
+
+- name: "Updating the inventory"
+  become: yes
+  lineinfile: dest=/etc/ansible/hosts regexp="^{{ item.name }} ansible_connection=lxd" insertafter="^\[lxd\]" line="{{ item.name }} ansible_connection=lxd"
+  with_items: "{{ lxd_provisioning_inventory }}"
+  when: (item.name is defined and item.name|trim)

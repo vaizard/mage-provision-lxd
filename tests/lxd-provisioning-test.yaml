@@ -1,0 +1,13 @@
+---
+
+- hosts: localhost
+  roles:
+    - role: "mage.lxd-provisioning"
+      lxd_provisioning_inventory:
+      - name: "ubutest1"
+        image: "ubuntu/xenial/amd64"
+      - name: "ubutest2"
+        image: "ubuntu/xenial/amd64"
+
+# Run with:
+# ansible-playbook -b --ask-become-pass ./lxd-provisioning-test.yaml
