@@ -13,3 +13,6 @@
   profiles: ["default"]
   wait_for_ipv4_addresses: true
   timeout: 600  
+  with_items: "{{ lxd_provisioning_inventory }}"
+  when: ((item.name is defined and item.name|trim) and
+         (item.image is defined and item.image|trim))
