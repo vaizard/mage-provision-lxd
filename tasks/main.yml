@@ -19,22 +19,17 @@
          (item.image is defined and item.image|trim))
 
 - name: "Making sure we can use the lxd connector on newly created containers"
-  local_action: add_host name="{{ item.name }}" ansible_connection=lxd
+  local_action: add_host name="{{ item.name }}" ansible_connection=lxd ansible_become=false
   with_items: "{{ lxd_provisioning_inventory }}"
   when: (item.name is defined and item.name|trim)
 
-# TODO repleace ansible_distribution condition with something that actually works
+# TODO the raw case statement below was tested only against Ubuntu, Gentoo and Fedora, other distros are guess work for now.
+# Inspired by https://github.com/ansible/ansible/blob/22b10a8f6e928fcfbd23a22e4a63a7f53177fa76/lib/ansible/module_utils/facts.py
 - name: "Making sure all debian based containers have python installed"
   delegate_to: "{{ item.name }}"
-  raw: "[[ `dpkg -s python` ]] || apt-get install -y python"
+  raw: "case `cat /etc/os-release | grep '^NAME=' | cut -c7- | sed 's/.$//'` in Ubuntu|Debian) [[ `dpkg -s python` ]] || apt-get install -y python ;; Gentoo) emerge -u python ;; Fedora|CentOS|RedHat|'Oracle Linux') yum install -y python ;; esac"
   with_items: "{{ lxd_provisioning_inventory }}"
-  when: ((item.name is defined and item.name|trim) and (ansible_distribution in [ 'Ubuntu', 'Debian' ]))
-
-- name: "Making sure all gentoo based containers have python installed"
-  delegate_to: "{{ item.name }}"
-  raw: "emerge -u python eix"
-  with_items: "{{ lxd_provisioning_inventory }}"
-  when: ((item.name is defined and item.name|trim) and (ansible_distribution in [ 'Gentoo' ]))
+  when: (item.name is defined and item.name|trim)
 
 - name: "Updating the inventory"
   become: yes
