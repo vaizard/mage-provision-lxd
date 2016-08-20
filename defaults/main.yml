@@ -1,8 +1,13 @@
 ---
 
-# list of provisioned LXD containers with parameters
+default_protocol: "tcp"
+default_wan_iface: "eth0"
+default_lxd_iface: "lxdbr32"
 
-provision_lxd_inventory: []
+#
+# list of provisioned LXD containers with parameters
+#
+lxd_provisioning_inventory: []
 
 #  - name: <container name>
 #    image: <base image>

@@ -1,0 +1,4 @@
+---
+
+# Predefining variables required in tasks/main.yml
+lxd_provisioning_ips: {}

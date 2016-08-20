@@ -23,8 +23,10 @@
   with_items: "{{ lxd_provisioning_inventory }}"
   when: (item.name is defined and item.name|trim)
 
+#
 # TODO the raw case statement below was tested only against Ubuntu, Gentoo and Fedora, other distros are guess work for now.
 # Inspired by https://github.com/ansible/ansible/blob/22b10a8f6e928fcfbd23a22e4a63a7f53177fa76/lib/ansible/module_utils/facts.py
+#
 - name: "Making sure all debian based containers have python installed"
   delegate_to: "{{ item.name }}"
   raw: "case `cat /etc/os-release | grep '^NAME=' | cut -c7- | sed 's/.$//'` in Ubuntu|Debian) [[ `dpkg -s python` ]] || apt-get install -y python ;; Gentoo) emerge -u python ;; Fedora|CentOS|RedHat|'Oracle Linux') yum install -y python ;; esac"
@@ -36,3 +38,74 @@
   lineinfile: dest=/etc/ansible/hosts regexp="^{{ item.name }} ansible_connection=lxd" insertafter="^\[lxd\]" line="{{ item.name }} ansible_connection=lxd"
   with_items: "{{ lxd_provisioning_inventory }}"
   when: (item.name is defined and item.name|trim)
+
+#
+# The quick and dirty way to get the containers IP's, maybe look into this later?
+#
+- name: "Getting IPv4 adresses of containers"
+  shell: "lxc list {{ item.name }} -c 4 | sed '4q;d' | awk '{print $2}'"
+  register: ipv4addr
+  with_items: "{{ lxd_provisioning_inventory }}"
+  when: (item.name is defined and item.name|trim)
+
+#
+# What we do below is dark arcane Ansible magic found at https://stackoverflow.com/questions/35605603/
+# The registered ipv4addr variable contains both information about the shell command called (with
+# container name in item.item.name, and the returned value in item.stdout.
+#
+# A debug msg provided here for reader's conveinece to see what kind of information ipv4addr contains
+#
+#- debug: msg="{{item.stdout}} {{item.item.name}}"
+#  with_items: "{{ipv4addr.results}}"
+#
+# And here the code:
+#
+- set_fact:
+    lxd_provisioning_ips: "{{ lxd_provisioning_ips | combine( {item.item.name: item.stdout} ) }}"
+  with_items: "{{ipv4addr.results}}"
+
+#
+# Another piece of Ansible dark arts is the parsing of the lxd_provisioning_inventory, a multidimensional
+# dict which may (but doesnt have to) define also NAT bridging for each container. Debug message showing
+# the ins and outs of traversing such a nasty dict while pooling in the ip adresses now stored in
+# lxd_provisioning_ips is below:
+#
+- debug: msg="Container {{ item.0.name }}, wants data from interface {{ item.1.wan_iface | default(default_wan_iface) }}, arriving at port {{ item.1.wan_port }}, bridged via {{ item.1.lxd_iface | default(default_lxd_iface) }} to {{ lxd_provisioning_ips[item.0.name] }}, port {{ item.1.lxd_port }}"
+  with_subelements:
+    - "{{ lxd_provisioning_inventory }}"
+    - nat
+    - flags:
+      skip_missing: true
+
+- debug: msg="Container {{ item.0.name }}, wants data from interface {{ item.1.wan_iface | default(default_wan_iface) }}, arriving at port {{ item.1.wan_port }}, bridged via {{ item.1.lxd_iface | default(default_lxd_iface) }} to {{ lxd_provisioning_ips[item.0.name] }}, port {{ item.1.lxd_port }}"
+  with_subelements:
+    - "{{ lxd_provisioning_inventory }}"
+    - nat
+    - flags:
+      skip_missing: true
+  when: ( (default_wan_iface is defined and default_wan_iface|trim) and (default_lxd_iface is defined and default_lxd_iface|trim) and (default_protocol is defined and default_protocol|trim) )
+
+#
+# Now the NAT magic
+#
+- name: "Making sure prerouting set properly for all containers"
+  iptables: table=nat chain=PREROUTING in_interface="{{ item.1.wan_iface | default(default_wan_iface) }}" protocol="{{ item.1.protocol | default(default_protocol) }}" destination_port="{{ item.1.wan_port }}" jump=DNAT to_destination="{{ lxd_provisioning_ips[item.0.name] }}:{{ item.1.lxd_port }}" comment="Prerouting for {{ item.0.name }} (Ansible managed)"
+  become: yes
+  with_subelements:
+    - "{{ lxd_provisioning_inventory }}"
+    - nat
+    - flags:
+      skip_missing: true
+  when: ( (default_wan_iface is defined and default_wan_iface|trim) and (default_lxd_iface is defined and default_lxd_iface|trim) and (default_protocol is defined and default_protocol|trim) )
+
+
+- name: "Making sure forwarding set properly for all containers"
+  iptables: chain=FORWARD in_interface="{{ item.1.wan_iface | default(default_wan_iface) }}" out_interface={{ item.1.lxd_iface | default(default_lxd_iface) }} protocol="{{ item.1.protocol | default(default_protocol) }}" destination="{{ lxd_provisioning_ips[item.0.name] }}" destination_port="{{ item.1.lxd_port }}" jump=ACCEPT comment="Accept forwarding for {{ item.0.name }} (Ansible managed)"
+  become: yes
+  with_subelements:
+    - "{{ lxd_provisioning_inventory }}"
+    - nat
+    - flags:
+      skip_missing: true
+  when: ( (default_wan_iface is defined and default_wan_iface|trim) and (default_lxd_iface is defined and default_lxd_iface|trim) and (default_protocol is defined and default_protocol|trim) )
+

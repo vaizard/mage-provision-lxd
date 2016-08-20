@@ -6,6 +6,16 @@
       lxd_provisioning_inventory:
       - name: "ubutest1"
         image: "ubuntu/xenial/amd64"
+        nat:
+        - wan_iface: enp3s0
+          wan_port: 443
+          lxd_iface: lxdbr0
+          lxd_port: 443
+          protocol: tcp
+        - wan_port: 80
+          lxd_iface: lxdbr0
+          lxd_port: 80
+          protocol: tcp
       - name: "ubutest2"
         image: "ubuntu/xenial/amd64"
 
