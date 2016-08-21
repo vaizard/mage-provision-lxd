@@ -1,0 +1,18 @@
+
+galaxy_info:
+  author: Pavel Stratil
+  company: Vaizard Institute
+  license: MIT
+  min_ansible_version: 2.0
+  description: A role to provision lxd containers along with itables rules for bridged NAT networking.
+  platforms:
+    - name: Ubuntu
+      versions:
+        - xenial
+    - name: Gentoo
+      versions:
+        - all
+  categories:
+    - system
+  dependencies:
+    - { role: mage-vmhost }
