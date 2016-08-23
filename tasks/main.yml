@@ -92,6 +92,7 @@
 # should be instead 
 # destination="{{ item.1.wan_ip | default(default_wan_ip) }}"
 # (in plaintext, instead of for example in_interface=eth0, you'll have, for example, destination=192.168.1.100)
+#
 - name: "Making sure prerouting set properly for all containers"
   iptables: table=nat chain=PREROUTING in_interface="{{ item.1.wan_iface | default(default_wan_iface) }}" protocol="{{ item.1.protocol | default(default_protocol) }}" destination_port="{{ item.1.wan_port }}" jump=DNAT to_destination="{{ lxd_provisioning_ips[item.0.name] }}:{{ item.1.lxd_port }}" comment="Prerouting for {{ item.0.name }} (Ansible managed)"
   become: yes
