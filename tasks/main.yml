@@ -70,59 +70,44 @@
 # the ins and outs of traversing such a nasty dict while pooling in the ip adresses now stored in
 # lxd_provisioning_ips is below:
 #
-- debug: msg="Container {{ item.0.name }}, wants data from interface {{ item.1.wan_iface | default(default_wan_iface) }}, arriving at port {{ item.1.wan_port }}, bridged via {{ item.1.lxd_iface | default(default_lxd_iface) }} to {{ lxd_provisioning_ips[item.0.name] }}, port {{ item.1.lxd_port }}"
+- debug: msg="Container {{ item.0.name }}, wants data from wan ip {{ item.1.wan_ip | default(main_wan_ip) }}, arriving at port {{ item.1.wan_port }}, bridged via {{ item.1.lxd_iface | default(main_lxd_iface) }} to {{ lxd_provisioning_ips[item.0.name] }}, port {{ item.1.lxd_port }}"
   with_subelements:
     - "{{ lxd_provisioning_inventory }}"
     - nat
     - flags:
       skip_missing: true
 
-- debug: msg="Container {{ item.0.name }}, wants data from interface {{ item.1.wan_iface | default(default_wan_iface) }}, arriving at port {{ item.1.wan_port }}, bridged via {{ item.1.lxd_iface | default(default_lxd_iface) }} to {{ lxd_provisioning_ips[item.0.name] }}, port {{ item.1.lxd_port }}"
+- debug: msg="Container {{ item.0.name }}, wants data from wan ip {{ item.1.wan_ip | default(main_wan_ip) }}, arriving at port {{ item.1.wan_port }}, bridged via {{ item.1.lxd_iface | default(main_lxd_iface) }} to {{ lxd_provisioning_ips[item.0.name] }}, port {{ item.1.lxd_port }}"
   with_subelements:
     - "{{ lxd_provisioning_inventory }}"
     - nat
     - flags:
       skip_missing: true
-  when: ( (default_wan_iface is defined and default_wan_iface|trim) and (default_lxd_iface is defined and default_lxd_iface|trim) and (default_protocol is defined and default_protocol|trim) )
+  when: ( (main_wan_ip is defined and main_wan_ip|trim) and (main_lxd_iface is defined and main_lxd_iface|trim) and (default_protocol is defined and default_protocol|trim) )
 
 #
 # Now the NAT magic
-# Please note that I chose to listen on the whole interface instead of a single ip adrdress. If this is not wat you want, then the part
-# in_interface="{{ item.1.wan_iface | default(default_wan_iface) }}"
-# should be instead 
-# destination="{{ item.1.wan_ip | default(default_wan_ip) }}"
-# (in plaintext, instead of for example in_interface=eth0, you'll have, for example, destination=192.168.1.100)
 #
+
+# iptables -t nat -A PREROUTING -d "${wan_ipv4}" -p ${protocol} --dport "${wan_port}" -j DNAT --to "${container_ipv4}":"${container_port}"
 - name: "Making sure prerouting set properly for all containers"
-  iptables: table=nat chain=PREROUTING in_interface="{{ item.1.wan_iface | default(default_wan_iface) }}" protocol="{{ item.1.protocol | default(default_protocol) }}" destination_port="{{ item.1.wan_port }}" jump=DNAT to_destination="{{ lxd_provisioning_ips[item.0.name] }}:{{ item.1.lxd_port }}" comment="Prerouting for {{ item.0.name }} (Ansible managed)"
+  iptables: table=nat chain=PREROUTING destination="{{ item.1.wan_ip | default(main_wan_ip) }}" protocol="{{ item.1.protocol | default(default_protocol) }}" destination_port="{{ item.1.wan_port }}" jump=DNAT to_destination="{{ lxd_provisioning_ips[item.0.name] }}:{{ item.1.lxd_port }}" comment="Prerouting for {{ item.0.name }} (Ansible managed)"
   become: yes
   with_subelements:
     - "{{ lxd_provisioning_inventory }}"
     - nat
     - flags:
       skip_missing: true
-  when: ( (default_wan_iface is defined and default_wan_iface|trim) and (default_lxd_iface is defined and default_lxd_iface|trim) and (default_protocol is defined and default_protocol|trim) )
+  when: ( (main_wan_ip is defined and main_wan_ip|trim) and (main_lxd_iface is defined and main_lxd_iface|trim) and (default_protocol is defined and default_protocol|trim) )
 
-# iptables -t nat -A PREROUTING -d "${host_ipv4}" -p ${protocol} --dport "${host_port}" -j DNAT --to "${virt_ipv4}":"${virt_port}"
-
-#- name: "Making sure prerouting set properly for all containers"
-#  iptables: table=nat chain=PREROUTING destination="192.168.1.233" protocol="{{ item.1.protocol | default(default_protocol) }}" destination_port="{{ item.1.wan_port }}" jump=DNAT to_destination="{{ lxd_provisioning_ips[item.0.name] }}:{{ item.1.lxd_port }}"
-#  become: yes
-#  with_subelements:
-#    - "{{ lxd_provisioning_inventory }}"
-#    - nat
-#    - flags:
-#      skip_missing: true
-#  when: ( (default_wan_iface is defined and default_wan_iface|trim) and (default_lxd_iface is defined and default_lxd_iface|trim) and (default_protocol is defined and default_protocol|trim) )
-
-# iptables -D FORWARD -i ${input_if} -o ${output_if} -p ${proto} -d ${virt_ipv4} --dport ${virt_port} -j ACCEPT
+# iptables -D FORWARD -d ${wan_ipv4} -o ${lxd_bridge_iface} -p ${protocol} -d ${container_ipv4} --dport ${container_port} -j ACCEPT
 - name: "Making sure forwarding set properly for all containers"
-  iptables: chain=FORWARD in_interface="{{ item.1.wan_iface | default(default_wan_iface) }}" out_interface={{ item.1.lxd_iface | default(default_lxd_iface) }} protocol="{{ item.1.protocol | default(default_protocol) }}" destination="{{ lxd_provisioning_ips[item.0.name] }}" destination_port="{{ item.1.lxd_port }}" jump=ACCEPT comment="Accept forwarding for {{ item.0.name }} (Ansible managed)"
+  iptables: chain=FORWARD destination="{{ item.1.wan_ip | default(main_wan_ip) }}" out_interface={{ item.1.lxd_iface | default(main_lxd_iface) }} protocol="{{ item.1.protocol | default(default_protocol) }}" destination="{{ lxd_provisioning_ips[item.0.name] }}" destination_port="{{ item.1.lxd_port }}" jump=ACCEPT comment="Accept forwarding for {{ item.0.name }} (Ansible managed)"
   become: yes
   with_subelements:
     - "{{ lxd_provisioning_inventory }}"
     - nat
     - flags:
       skip_missing: true
-  when: ( (default_wan_iface is defined and default_wan_iface|trim) and (default_lxd_iface is defined and default_lxd_iface|trim) and (default_protocol is defined and default_protocol|trim) )
+  when: ( (main_wan_ip is defined and main_wan_ip|trim) and (main_lxd_iface is defined and main_lxd_iface|trim) and (default_protocol is defined and default_protocol|trim) )
 

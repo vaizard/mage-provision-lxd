@@ -3,6 +3,8 @@
 - hosts: localhost
   roles:
     - role: "mage.lxd-provisioning"
+      main_wan_ip: 192.168.1.233
+      main_lxd_iface: "lxdbr0"
       lxd_provisioning_inventory:
       - name: "ubutest1"
         image: "ubuntu/xenial/amd64"

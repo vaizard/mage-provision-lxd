@@ -1,8 +1,6 @@
 ---
 
-default_protocol: "tcp"
-default_wan_iface: "eth0"
-default_lxd_iface: "lxdbr32"
+lxd_default_protocol: "tcp"
 
 #
 # list of provisioned LXD containers with parameters
