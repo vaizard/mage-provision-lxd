@@ -106,7 +106,7 @@
 # iptables -t nat -A PREROUTING -d "${host_ipv4}" -p ${protocol} --dport "${host_port}" -j DNAT --to "${virt_ipv4}":"${virt_port}"
 
 - name: "Making sure prerouting set properly for all containers"
-  iptables: table=nat chain=PREROUTING in_interface="{{ item.1.wan_iface | default(default_wan_iface) }}" protocol="{{ item.1.protocol | default(default_protocol) }}" destination_port="{{ item.1.wan_port }}" jump=DNAT destination="{{ lxd_provisioning_ips[item.0.name] }}:{{ item.1.lxd_port }}"
+  iptables: table=nat chain=PREROUTING protocol="{{ item.1.protocol | default(default_protocol) }}" destination_port="{{ item.1.wan_port }}" jump=DNAT to_destination="{{ lxd_provisioning_ips[item.0.name] }}" to_port="{{ item.1.lxd_port }}"
   become: yes
   with_subelements:
     - "{{ lxd_provisioning_inventory }}"
