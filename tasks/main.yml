@@ -43,7 +43,7 @@
 # The quick and dirty way to get the containers IP's, maybe look into this later?
 #
 - name: "Getting IPv4 adresses of containers"
-  shell: "lxc list {{ item.name }} -c 4 | sed '4q;d' | awk '{print $2}'"
+  shell: "lxc list {{ item.name }}$ -c 4 | sed '4q;d' | awk '{print $2}'"
   register: ipv4addr
   with_items: "{{ lxd_provisioning_inventory }}"
   when: (item.name is defined and item.name|trim)
