@@ -111,3 +111,14 @@
       skip_missing: true
   when: ( (main_wan_ip is defined and main_wan_ip|trim) and (main_lxd_iface is defined and main_lxd_iface|trim) and (lxd_default_protocol is defined and lxd_default_protocol|trim) )
 
+#
+# Editing /etc/host files
+#
+
+- name: Add mappings to /etc/hosts
+  blockinfile:
+    dest: /etc/hosts
+    block: |
+      {{item.ip}} {{item.name}}
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{item.name}}"
+  with_items: {{ lxd_hosts }}
