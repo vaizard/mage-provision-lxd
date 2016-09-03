@@ -121,4 +121,4 @@
     block: |
       {{item.ip}} {{item.name}}
     marker: "# {mark} ANSIBLE MANAGED BLOCK {{item.name}}"
-  with_items: {{ lxd_hosts }}
+  with_items: "{{ lxd_hosts }}"
