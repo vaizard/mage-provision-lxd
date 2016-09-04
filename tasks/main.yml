@@ -55,7 +55,7 @@
 #
 # A debug msg provided here for reader's conveinece to see what kind of information ipv4addr contains
 #
-#- debug: msg="{{item.stdout}} {{item.item.name}}<"
+#- debug: msg="{{item.stdout}} {{item.item.name}}"
 #  with_items: "{{ipv4addr.results}}"
 #
 # And here the code:
