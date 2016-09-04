@@ -115,21 +115,14 @@
 # Editing /etc/host files
 #
 
-- name: "Preparing /etc/hosts managed block with [name:ip] mapping to all containers"
-  set_fact:
+- set_fact:
     newline: "\n"
-    managed_hosts_section: "{%- for item in ipv4addr.results -%}
-              {{item.item.name}}: {{item.stdout}}{{ newline }}
-           {%- endfor -%}"
-  
-  
-#- name: "Preparing /etc/hosts managed block with [name:ip] mapping to all containers"
-#  set_fact:
-#    newline: "\n"
-#    managed_hosts_section: "{%- for item in lxd_hosts -%}
-#              {{ item.name }}: {{ item.ip }} {{ newline }}
-#           {%- endfor -%}"
 
+- name: "Preparing /etc/hosts block with name,ip mapping to all ansible managed LXD containers"
+  set_fact:
+    managed_hosts_section: "{%- for item in ipv4addr.results -%}
+              {{item.item.name}}: {{item.stdout}} {{ newline }}
+           {%- endfor -%}"
 
 - name: "Applying the block to vmhost's /etc/hosts file"
   blockinfile:
