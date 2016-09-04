@@ -55,7 +55,7 @@
 #
 # A debug msg provided here for reader's conveinece to see what kind of information ipv4addr contains
 #
-#- debug: msg="{{item.stdout}} {{item.item.name}}"
+#- debug: msg="{{item.stdout}} {{item.item.name}}<"
 #  with_items: "{{ipv4addr.results}}"
 #
 # And here the code:
@@ -115,10 +115,36 @@
 # Editing /etc/host files
 #
 
-- name: Add mappings to /etc/hosts
+- name: "Preparing /etc/hosts managed block with [name:ip] mapping to all containers"
+  set_fact:
+    newline: "\n"
+    managed_hosts_section: "{%- for item in ipv4addr.results -%}
+              {{item.item.name}}: {{item.stdout}}{{ newline }}
+           {%- endfor -%}"
+  
+  
+#- name: "Preparing /etc/hosts managed block with [name:ip] mapping to all containers"
+#  set_fact:
+#    newline: "\n"
+#    managed_hosts_section: "{%- for item in lxd_hosts -%}
+#              {{ item.name }}: {{ item.ip }} {{ newline }}
+#           {%- endfor -%}"
+
+
+- name: "Applying the block to vmhost's /etc/hosts file"
   blockinfile:
     dest: /etc/hosts
-    block: |
-      {{item.ip}} {{item.name}}
-    marker: "# {mark} ANSIBLE MANAGED BLOCK {{item.name}}"
-  with_items: "{{ lxd_hosts }}"
+    block: >
+      {{ managed_hosts_section }}
+    marker: "# {mark} ansible managed section of LXD containers"
+
+
+- name: "Applying the block to all LXD containers /etc/hosts file"
+  blockinfile:
+    dest: /etc/hosts
+    block: >
+      {{ managed_hosts_section }}
+    marker: "# {mark} ansible managed section of LXD containers"
+  delegate_to: "{{ item.name }}"
+  with_items: "{{ lxd_provisioning_inventory }}"
+  when: (item.name is defined and item.name|trim)
