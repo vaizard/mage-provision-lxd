@@ -29,7 +29,7 @@
 #
 - name: "Making sure all debian based containers have python installed"
   delegate_to: "{{ item.name }}"
-  raw: "case `cat /etc/os-release | grep '^ID=' | cut -c4- | sed -e 's/^\"//' -e 's/\"$//'` in ubuntu|debian) [[ `dpkg -s python` ]] || apt-get install -y python ;; gentoo) emerge -u python ;; fedora|centos|rhel|ol) yum install -y python ;; esac"
+  raw: "case `cat /etc/os-release | grep '^ID=' | cut -c4- | sed -e 's/^\"//' -e 's/\"$//'` in ubuntu|debian) [[ `dpkg -s python` ]] || apt-get install -y python ;; gentoo) emerge -u python ;; fedora|centos|rhel|ol) dnf install -y python ;; esac"
   with_items: "{{ lxd_provisioning_inventory }}"
   when: (item.name is defined and item.name|trim)
 
