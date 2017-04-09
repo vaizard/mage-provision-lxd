@@ -91,7 +91,7 @@
 
 # iptables -t nat -A PREROUTING -d "${wan_ipv4}" -p ${protocol} --dport "${wan_port}" -j DNAT --to "${container_ipv4}":"${container_port}"
 - name: "Making sure prerouting set properly for all containers"
-  iptables: table=nat chain=PREROUTING destination="{{ item.1.wan_ip | default(main_wan_ip) }}" protocol="{{ item.1.protocol | default(lxd_default_protocol) }}" destination_port="{{ item.1.wan_port }}" jump=DNAT to_destination="{{ lxd_provisioning_ips[item.0.name] }}:{{ item.1.lxd_port }}" comment="Prerouting for {{ item.0.name }} (Ansible managed)"
+  iptables: table=nat chain=PREROUTING destination="{{ item.1.wan_ip | default(main_wan_ip) }}" protocol="{{ item.1.protocol | default(lxd_default_protocol) }}" destination_port="{{ item.1.wan_port }}" jump=DNAT to_destination="{{ lxd_provisioning_ips[item.0.name] }}:{{ item.1.lxd_port | regex_replace(':', '-') }}" comment="Prerouting for {{ item.0.name }} (Ansible managed)"
   become: yes
   with_subelements:
     - "{{ lxd_provisioning_inventory }}"

@@ -1,94 +1,58 @@
 # mage.lxd-provisioning
 
-An ansible recipe to manage lxd containers on a host. Adding the following to a playbook called **test-lxd.yml** and running `ansible-playbook -b --ask-become-pass /home/killua/run-all.yaml` will:
+An ansible role to manage lxd containers on a host which
 
-- start a new container named 'mycontainer'
-- add to the temporary in-memory inventory 'mycontainer' and set its ansible_connection to lxd
-- test if python is present in the container, install it if not (doing this since python is a requirement to manage a node with ansible)
-- add 'mycontainer' to your local /etc/ansible/hosts inventory, into the [lxd] group.
+- ensures that new containers get launched
+- adds newly-launched containers to the temporary in-memory inventory and set their ansible_connection to lxd
+- tests if python is present in the new containers, installs it if not (python is a requirement to manage a node with ansible)
+- adds newly-launched containers to the local /etc/ansible/hosts inventory, into the [lxd] group.
+- configures iptables to port-forward traffic incident on the wan interface to respective lxd containers
 
-This recipe requires
+This role is often coupled with the mage.nginx-proxy playbook that additionally routes name-based http traffic.
 
-- ansible 2.2 or newer
-- lxd
+## Example playbook
 
+The following playbook relies on other mage roles, please install them too or comment out the relevant sections. 
+Note that at least LXD must be present and lxdbr0 configured for this role to work. This example playbook will setup
+three lxd containers
 
-**Designing lxd provisioning**
+- nginx-proxy (i.e. intended for the above-mentioned mage.nginx-proxy role - hence the consumption of relevant ports [80,443])
+- ubuntu-container (i.e. intended for a webhosting container where nginx-proxy would direct name-based http traffic, and ports would be routed so that ftp [20,21], ftps [989,990] and ftp pasv range [10000:14000] are evenly forwarded and port 30022 of the host gets forwarded to the ssh [22] port of the container)
+- fedora-container (yet another demo container - see `lxc image list images:` for more distros, versions, options)
 
-Setting up lxd containers is fairly straightforward thanks to the lxd plugin comming with ansible 2.2. The tough nut to crack is networking, because lxd doesn't have (at present) networking api in place. So what we do is the following:
-
-- setup a nginx-based reverse proxy container (mageproxy) 
-- upon lxd container creation,
-  - get its assigned ip adress
-  - use iptables (nat routing) to get the container connected
-  - modify one of the following mageproxy files
-    - /etc/hosts (add <ip> <containername>)
-    - /etc/nginx/upstream.conf (do the same)
-
-
-2. 
-
-**test-lxd.yml playbook**
 
 ```
+---
 - hosts: localhost
-  roles:
-    - role: "mage.lxd-provisioning"
+  vars:
+      main_wan_ip: "192.168.1.233"
+      main_lxd_iface: "lxdbr0"
       lxd_provisioning_inventory:
-        - name: "ubu_test_1"
-          image: "ubuntu/xenial/amd64"
-          nat:
-            - extif: enp3s0
-              intif: lxdbr0
-              extport: 8080
-              intport: 8080
-          proxy:
-            - name: "ubu1.vaizard.xyz"
-              path: "/postgres/"
-              pass: "
-        - name: "ubu_test_2"
-          image: "ubuntu/xenial/amd64"
-          proxy:
-            - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+      - name: "nginx-proxy"
+        image: "ubuntu/xenial/amd64"
+        nat:
+        - { wan_port: "443", lxd_port: "443" }
+        - { wan_port: "80",  lxd_port: "80" }
+      - name: "unbuntu-container"
+        image: "ubuntu/xenial/amd64"
+        nat:
+        - { wan_port: "30022", lxd_port: "22", protocol: tcp }
+        - { wan_port: "21", lxd_port: "21" }
+        - { wan_port: "20", lxd_port: "20" }
+        - { wan_port: "990", lxd_port: "990" }
+        - { wan_port: "989", lxd_port: "989" }
+        - { wan_port: "10000:14000", lxd_port: "10000:14000" }
+      - name: "fedora-container"
+        image: "fedora/25"
+  roles:
+    - role: "mage-vmhost"
+    - role: "mage.lxd-provisioning"
+    - role: "mage-update"
+
+- hosts: lxd
+  roles:
+    - role: "mage-common"
+    - role: "mage-update"
 ```
 
-**using the lxd plugin without this role**
-```
-- hosts: localhost
-  connection: local
-  tasks:
-    - name: Create a started container
-      lxd_container:
-        name: mycontainer
-        state: started
-        source:
-          type: image
-          mode: pull
-          server: https://images.linuxcontainers.org
-          protocol: lxd
-          alias: ubuntu/xenial/amd64
-        profiles: ["default"]
-        wait_for_ipv4_addresses: true
-        timeout: 600
-
-
-    - name: add the host
-      local_action: add_host name=mycontainer ansible_connection=lxd
-
-
-    - name: check python is installed in container
-      delegate_to: mycontainer
-      raw: dpkg -s python
-      register: python_install_check
-      failed_when: python_install_check.rc not in [0, 1]
-      changed_when: false
-
-    - name: install python in container
-      delegate_to: mycontainer
-      raw: apt-get install -y python
-      when: python_install_check.rc == 1
-
-    - name: updating the inventory
-      become: yes
-      lineinfile: dest=/etc/ansible/hosts regexp="^mycontainer ansible_connection=lxd" insertafter="^\[lxd\]" line="mycontainer ansible_connection=lxd"
-```
+Should you save this as provisioning.yml, play it with  `ansible-playbook -b --ask-become-pass provisioning.yml`.
