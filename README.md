@@ -27,7 +27,7 @@ three lxd containers
   vars:
       main_wan_ip: "192.168.1.233"
       main_lxd_iface: "lxdbr0"
-      provisioning_inventory:
+      provisioning:
         lxd:
           - name: "nginx-proxy"
             image: "ubuntu/xenial/amd64"

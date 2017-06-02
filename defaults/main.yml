@@ -5,7 +5,7 @@ lxd_default_protocol: "tcp"
 #
 # list of provisioned LXD containers with parameters
 #
-provisioning_inventory: []
+provisioning: []
 
 #  lxd:
 #   - name: <container name>

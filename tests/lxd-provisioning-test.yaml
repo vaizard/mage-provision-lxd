@@ -5,7 +5,7 @@
     - role: "mage.lxd-provisioning"
       main_wan_ip: 192.168.1.233
       main_lxd_iface: "lxdbr0"
-      provisioning_inventory:
+      provisioning:
         lxd:
           - name: "ubutest1"
             image: "ubuntu/xenial/amd64"
