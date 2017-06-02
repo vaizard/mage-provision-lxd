@@ -27,23 +27,24 @@ three lxd containers
   vars:
       main_wan_ip: "192.168.1.233"
       main_lxd_iface: "lxdbr0"
-      lxd_provisioning_inventory:
-      - name: "nginx-proxy"
-        image: "ubuntu/xenial/amd64"
-        nat:
-        - { wan_port: "443", lxd_port: "443" }
-        - { wan_port: "80",  lxd_port: "80" }
-      - name: "unbuntu-container"
-        image: "ubuntu/xenial/amd64"
-        nat:
-        - { wan_port: "30022", lxd_port: "22", protocol: tcp }
-        - { wan_port: "21", lxd_port: "21" }
-        - { wan_port: "20", lxd_port: "20" }
-        - { wan_port: "990", lxd_port: "990" }
-        - { wan_port: "989", lxd_port: "989" }
-        - { wan_port: "10000:14000", lxd_port: "10000:14000" }
-      - name: "fedora-container"
-        image: "fedora/25"
+      provisioning_inventory:
+        lxd:
+          - name: "nginx-proxy"
+            image: "ubuntu/xenial/amd64"
+            nat:
+            - { wan_port: "443", lxd_port: "443" }
+            - { wan_port: "80",  lxd_port: "80" }
+          - name: "unbuntu-container"
+            image: "ubuntu/xenial/amd64"
+            nat:
+            - { wan_port: "30022", lxd_port: "22", protocol: tcp }
+            - { wan_port: "21", lxd_port: "21" }
+            - { wan_port: "20", lxd_port: "20" }
+            - { wan_port: "990", lxd_port: "990" }
+            - { wan_port: "989", lxd_port: "989" }
+            - { wan_port: "10000:14000", lxd_port: "10000:14000" }
+          - name: "fedora-container"
+            image: "fedora/25"
   roles:
     - role: "mage-vmhost"
     - role: "mage.lxd-provisioning"
