@@ -56,3 +56,12 @@ three lxd containers
 ```
 
 Should you save this as provisioning.yml, play it with  `ansible-playbook -b --ask-become-pass provisioning.yml`.
+
+## Cheat-sheet
+
+```
+sudo iptables -L --line-numbers # show ip tables rules (chain INPUT, FORWARD, OUTPUT)
+sudo iptables -L -t nat --line-numbers # show ip tables rules (chain PREROUTING, POSTROUTING)
+sudo iptables -D FORWARD 33 # delete rule with line number 33 in the FORWARD chain
+sudo iptables -t nat -D PREROUTING 15 # delete rule with liine number 15 in the PREROUTING chain, in the nat table
+```
