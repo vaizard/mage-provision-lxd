@@ -57,7 +57,7 @@ three lxd containers
 
 Should you save this as provisioning.yml, play it with  `ansible-playbook -b --ask-become-pass provisioning.yml`.
 
-## Cheat-sheet
+## iptables cheat-sheet
 
 ```
 sudo iptables -L --line-numbers # show ip tables rules (chain INPUT, FORWARD, OUTPUT)
@@ -65,3 +65,62 @@ sudo iptables -L -t nat --line-numbers # show ip tables rules (chain PREROUTING,
 sudo iptables -D FORWARD 33 # delete rule with line number 33 in the FORWARD chain
 sudo iptables -t nat -D PREROUTING 15 # delete rule with liine number 15 in the PREROUTING chain, in the nat table
 ```
+
+## managing lxd containers on remote hosts via api
+
+Lets assume we have two physical machines **localhost** and **remotehost** with ipv4 address 10.20.1.1, both having lxd installed, **localhost** having also ansible installed. Managing local and remote lxd containers from **localhost** differs in setting the ansible_host in the inventory file according to this example:
+
+```
+[lxd]
+localcontainer ansible_connection=lxd
+remotecontainer ansible_connection=lxd ansible_host=10.20.1.1:remotecontainer
+```
+
+In order for this to work, localhost's and remotehost's lxd have to be setup accordingly:
+
+```
+### Setup remotehost's lxd to listen on its IP and a nonstandard port 48443 to have additional security by obscurity
+### (optionally use 0.0.0.0 to listen on all IPs). Define a trust_password and have a look at remotehost's certificate 
+### fingerprint
+
+remotehost $ sudo lxc config set core.https_address 10.20.1.1:48443 
+remotehost $ sudo lxc config set core.trust_password MYSECRETPASS
+remotehost $ sudo lxc info | grep certificate_fingerprint
+  certificate_fingerprint: 6db21257d615902bbbd1c251335150dbe669ccc74523a0089b1017e15165aa41
+
+### Generate a keypair and upload the client key to remotehost. Don't forget to check if the fingeprints
+### match, otherwise you risk falling for an attacker's trap (i.e. a MITM attack).
+
+localhost $ sudo lxc remote add remotehost 10.20.1.1:48443
+Certificate fingerprint: 6db21257d615902bbbd1c251335150dbe669ccc74523a0089b1017e15165aa41
+ok (y/n)? y
+Admin password for remotehost: 
+Client certificate stored at server:  remotehost
+
+### Unset trust_password to prevent any possible brute-force attacks against lxd's api
+
+remotehost $ sudo lxc config unset core.trust_password
+
+### LXD's API is now secure good to go, it can be even exposed to the internet. The main security reason not to do so
+### would be a lack of trust in the Go TLS stack or company policies. To summarize, to keep your LXD safe in production, 
+### you'd most likely set core.https_address to a single address (not use 0.0.0.0), do yout usual firewall rules in
+### front and in general not keep core.trust_password set after your clients are trusted. To review and manage LXD API's
+### configuration, you might find the following helpful:
+
+remotehost $ lxc config get core.https_address       # review listen ip and port
+remotehost $ lxc config get core.trust_password      # review if trust_password is still set (returns true if set to something)
+remotehost $ lxc config trust list                   # review all trusted clients
+remotehost $ lxc config trust remove <fingerprint>   # revoke access to a client identified by <fingerprint>
+
+localhost # lxc remote list
+localhost # lxc remote list remotehost:
+localhost # lxc list remotehost:
+```
+
+Also see
+
+* https://github.com/lxc/lxd/issues/3448
+* https://github.com/lxc/lxd/issues/2098
+
+
+
