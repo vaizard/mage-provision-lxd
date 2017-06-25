@@ -68,12 +68,12 @@ sudo iptables -t nat -D PREROUTING 15 # delete rule with liine number 15 in the 
 
 ## managing lxd containers on remote hosts via api
 
-Lets assume we have two physical machines **localhost** and **remotehost** with ipv4 address 10.20.1.1, both having lxd installed, **localhost** having also ansible installed. Managing local and remote lxd containers from **localhost** differs in setting the ansible_host in the inventory file according to this example:
+Lets assume we have two physical machines **localhost** and **remotehost** with ipv4 address 10.20.1.1, both having lxd installed, **localhost** having also ansible installed. Managing local and remote lxd containers from **localhost** differs in setting the ansible_host in the inventory file (/etc/ansible/hosts) according to this example:
 
 ```
 [lxd]
 localcontainer ansible_connection=lxd
-remotecontainer ansible_connection=lxd ansible_host=10.20.1.1:remotecontainer
+remotecontainer ansible_connection=lxd ansible_host=remotehost:remotecontainer
 ```
 
 In order for this to work, localhost's and remotehost's lxd have to be setup accordingly:
@@ -116,6 +116,8 @@ localhost # lxc remote list
 localhost # lxc remote list remotehost:
 localhost # lxc list remotehost:
 ```
+
+Note that the "remotehost" in the inventory file is the name under which you see the machine with `lxc list remotehost:` - if you use a nonstandard port, i.e. `lxc remote add remotehost 10.20.1.1:48443`, then your inventory expects the given remotehost name, not the port or ip address.
 
 Also see
 
