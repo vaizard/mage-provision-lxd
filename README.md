@@ -115,6 +115,7 @@ remotehost $ lxc config trust remove <fingerprint>   # revoke access to a client
 localhost # lxc remote list
 localhost # lxc remote list remotehost:
 localhost # lxc list remotehost:
+localhost # lxc exec remotehost:remotecontainer      # interact with a remotecontainer from localhost
 ```
 
 Note that the "remotehost" in the inventory file is the name under which you see the machine with `lxc list remotehost:` - if you use a nonstandard port, i.e. `lxc remote add remotehost 10.20.1.1:48443`, then your inventory expects the given remotehost name, not the port or ip address.
