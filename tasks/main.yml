@@ -8,8 +8,8 @@
     source:
       type: image
       mode: pull
-      server: https://images.linuxcontainers.org
-      protocol: lxd
+      server: "{{ item.server | default('https://images.linuxcontainers.org') }}"
+      protocol: "{{ item.protocol | default('lxd') }}"
       alias: "{{ item.image }}"
     profiles: ["default"]
     wait_for_ipv4_addresses: true
@@ -62,7 +62,8 @@
 # The quick and dirty way to get the containers IP's, maybe look into this later?
 #
 - name: "Getting IPv4 adresses of containers"
-  shell: "lxc list {{ item.name }}$ -c 4 | sed '4q;d' | awk '{print $2}'"
+#  shell: "lxc list {{ item.name }}$ -c 4 | sed '4q;d' | awk '{print $2}'"
+  shell: "lxc list -c 4n  | grep '\\s{{ item.name }}\\s' | awk '{print $2}'"
   register: ipv4addr
   with_items: "{{ provisioning.lxd }}"
   when: (item.name is defined and item.name|trim)
