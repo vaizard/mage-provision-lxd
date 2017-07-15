@@ -42,7 +42,9 @@
        fedora|centos|rhel|ol) 
          PKGMNGR="yum"
          [[ `type -t dnf` ]] && PKGMNGR="dnf"
-         [[ `rpm -q python` ]] || $PKGMNGR install -y python
+         [[ `rpm -qa python` ]] || $PKGMNGR install -y python python-simplejson
+         [[ `rpm -qa python-simplejson` ]] || $PKGMNGR install -y python-simplejson
+         [[ `type -t dnf` ]] && [[ `rpm -qa python-dnf` ]] || $PKGMNGR install -y python-dnf
          ;;
      esac
   with_items: "{{ provisioning.lxd }}"
