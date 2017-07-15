@@ -5,8 +5,9 @@ lxd_default_protocol: "tcp"
 #
 # list of provisioned LXD containers with parameters
 #
-lxd_provisioning_inventory: []
+provisioning: []
 
-#  - name: <container name>
-#    image: <base image>
-#    nat: [ <nat rules> ]
+#  lxd:
+#   - name: <container name>
+#     image: <base image>
+#     nat: [ <nat rules> ]

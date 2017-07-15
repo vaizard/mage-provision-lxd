@@ -5,21 +5,22 @@
     - role: "mage.lxd-provisioning"
       main_wan_ip: 192.168.1.233
       main_lxd_iface: "lxdbr0"
-      lxd_provisioning_inventory:
-      - name: "ubutest1"
-        image: "ubuntu/xenial/amd64"
-        nat:
-        - wan_iface: enp3s0
-          wan_port: 443
-          lxd_iface: lxdbr0
-          lxd_port: 443
-          protocol: tcp
-        - wan_port: 80
-          lxd_iface: lxdbr0
-          lxd_port: 80
-          protocol: tcp
-      - name: "ubutest2"
-        image: "ubuntu/xenial/amd64"
+      provisioning:
+        lxd:
+          - name: "ubutest1"
+            image: "ubuntu/xenial/amd64"
+            nat:
+              - wan_iface: enp3s0
+                wan_port: 443
+                lxd_iface: lxdbr0
+                lxd_port: 443
+                protocol: tcp
+              - wan_port: 80
+                lxd_iface: lxdbr0
+                lxd_port: 80
+                protocol: tcp
+          - name: "ubutest2"
+            image: "ubuntu/xenial/amd64"
 
 # Run with:
 # ansible-playbook -b --ask-become-pass ./lxd-provisioning-test.yaml

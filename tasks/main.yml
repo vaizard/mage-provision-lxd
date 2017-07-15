@@ -8,26 +8,28 @@
     source:
       type: image
       mode: pull
-      server: https://images.linuxcontainers.org
-      protocol: lxd
+      server: "{{ item.server | default('https://images.linuxcontainers.org') }}"
+      protocol: "{{ item.protocol | default('lxd') }}"
       alias: "{{ item.image }}"
     profiles: ["default"]
     wait_for_ipv4_addresses: true
     timeout: 600
-  with_items: "{{ lxd_provisioning_inventory }}"
+  with_items: "{{ provisioning.lxd }}"
   when: ((item.name is defined and item.name|trim) and
          (item.image is defined and item.image|trim))
+  tags: [ "configure" ]
 
 - name: "Making sure we can use the lxd connector on newly created containers"
   local_action: add_host name="{{ item.name }}" ansible_connection=lxd ansible_become=false
-  with_items: "{{ lxd_provisioning_inventory }}"
+  with_items: "{{ provisioning.lxd }}"
   when: (item.name is defined and item.name|trim)
+  tags: [ "configure" ]
+
 
 #
-# TODO the raw case statement below was tested only against Ubuntu, Gentoo and Fedora, other distros are guess work for now.
 # Inspired by https://github.com/ansible/ansible/blob/22b10a8f6e928fcfbd23a22e4a63a7f53177fa76/lib/ansible/module_utils/facts.py
 #
-- name: "Making sure all debian based containers have python installed"
+- name: "Making sure all containers have python installed"
   delegate_to: "{{ item.name }}"
   raw: |
      case `cat /etc/os-release | grep '^ID=' | cut -c4- | sed -e 's/^\"//' -e 's/\"$//'` in 
@@ -41,27 +43,32 @@
          PKGMNGR="yum"
          [[ `type -t dnf` ]] && PKGMNGR="dnf"
          [[ `rpm -q python` ]] || $PKGMNGR install -y python
-         #[[ `type -t yum` ]] && [[ `rpm -q python` ]] || yum install -y python
-         #[[ `rpm -q python` ]] || [[ `type -t yum` ]] && yum install -y python
          ;;
      esac
-  with_items: "{{ lxd_provisioning_inventory }}"
+  with_items: "{{ provisioning.lxd }}"
   when: (item.name is defined and item.name|trim)
+  tags: [ "configure" ]
+
 
 - name: "Updating the inventory"
   become: yes
   lineinfile: dest=/etc/ansible/hosts regexp="^{{ item.name }} ansible_connection=lxd" insertafter="^\[lxd\]" line="{{ item.name }} ansible_connection=lxd"
-  with_items: "{{ lxd_provisioning_inventory }}"
+  with_items: "{{ provisioning.lxd }}"
   when: (item.name is defined and item.name|trim)
+  tags: [ "configure" ]
+
 
 #
 # The quick and dirty way to get the containers IP's, maybe look into this later?
 #
 - name: "Getting IPv4 adresses of containers"
-  shell: "lxc list {{ item.name }}$ -c 4 | sed '4q;d' | awk '{print $2}'"
+#  shell: "lxc list {{ item.name }}$ -c 4 | sed '4q;d' | awk '{print $2}'"
+  shell: "lxc list -c 4n  | grep '\\s{{ item.name }}\\s' | awk '{print $2}'"
   register: ipv4addr
-  with_items: "{{ lxd_provisioning_inventory }}"
+  with_items: "{{ provisioning.lxd }}"
   when: (item.name is defined and item.name|trim)
+  tags: [ "configure" ]
+
 
 #
 # What we do below is dark arcane Ansible magic found at https://stackoverflow.com/questions/35605603/
@@ -78,27 +85,33 @@
 - set_fact:
     lxd_provisioning_ips: "{{ lxd_provisioning_ips | combine( {item.item.name: item.stdout} ) }}"
   with_items: "{{ipv4addr.results}}"
+  tags: [ "configure" ]
+
 
 #
-# Another piece of Ansible dark arts is the parsing of the lxd_provisioning_inventory, a multidimensional
+# Another piece of Ansible dark arts is the parsing of the provisioning.lxd, a multidimensional
 # dict which may (but doesnt have to) define also NAT bridging for each container. Debug message showing
 # the ins and outs of traversing such a nasty dict while pooling in the ip adresses now stored in
 # lxd_provisioning_ips is below:
 #
 - debug: msg="Container {{ item.0.name }}, wants data from wan ip {{ item.1.wan_ip | default(main_wan_ip) }}, arriving at port {{ item.1.wan_port }}, bridged via {{ item.1.lxd_iface | default(main_lxd_iface) }} to {{ lxd_provisioning_ips[item.0.name] }}, port {{ item.1.lxd_port }}"
   with_subelements:
-    - "{{ lxd_provisioning_inventory }}"
+    - "{{ provisioning.lxd }}"
     - nat
     - flags:
       skip_missing: true
+  tags: [ "configure" ]
+
 
 - debug: msg="Container {{ item.0.name }}, wants data from wan ip {{ item.1.wan_ip | default(main_wan_ip) }}, arriving at port {{ item.1.wan_port }}, bridged via {{ item.1.lxd_iface | default(main_lxd_iface) }} to {{ lxd_provisioning_ips[item.0.name] }}, port {{ item.1.lxd_port }}"
   with_subelements:
-    - "{{ lxd_provisioning_inventory }}"
+    - "{{ provisioning.lxd }}"
     - nat
     - flags:
       skip_missing: true
   when: ( (main_wan_ip is defined and main_wan_ip|trim) and (main_lxd_iface is defined and main_lxd_iface|trim) and (lxd_default_protocol is defined and lxd_default_protocol|trim) )
+  tags: [ "configure" ]
+
 
 #
 # Now the NAT magic
@@ -109,22 +122,25 @@
   iptables: table=nat chain=PREROUTING destination="{{ item.1.wan_ip | default(main_wan_ip) }}" protocol="{{ item.1.protocol | default(lxd_default_protocol) }}" destination_port="{{ item.1.wan_port }}" jump=DNAT to_destination="{{ lxd_provisioning_ips[item.0.name] }}:{{ item.1.lxd_port | regex_replace(':', '-') }}" comment="Prerouting for {{ item.0.name }} (Ansible managed)"
   become: yes
   with_subelements:
-    - "{{ lxd_provisioning_inventory }}"
+    - "{{ provisioning.lxd }}"
     - nat
     - flags:
       skip_missing: true
   when: ( (main_wan_ip is defined and main_wan_ip|trim) and (main_lxd_iface is defined and main_lxd_iface|trim) and (lxd_default_protocol is defined and lxd_default_protocol|trim) )
+  tags: [ "configure" ]
 
 # iptables -D FORWARD -d ${wan_ipv4} -o ${lxd_bridge_iface} -p ${protocol} -d ${container_ipv4} --dport ${container_port} -j ACCEPT
 - name: "Making sure forwarding set properly for all containers"
   iptables: chain=FORWARD destination="{{ item.1.wan_ip | default(main_wan_ip) }}" out_interface={{ item.1.lxd_iface | default(main_lxd_iface) }} protocol="{{ item.1.protocol | default(lxd_default_protocol) }}" destination="{{ lxd_provisioning_ips[item.0.name] }}" destination_port="{{ item.1.lxd_port }}" jump=ACCEPT comment="Accept forwarding for {{ item.0.name }} (Ansible managed)"
   become: yes
   with_subelements:
-    - "{{ lxd_provisioning_inventory }}"
+    - "{{ provisioning.lxd }}"
     - nat
     - flags:
       skip_missing: true
   when: ( (main_wan_ip is defined and main_wan_ip|trim) and (main_lxd_iface is defined and main_lxd_iface|trim) and (lxd_default_protocol is defined and lxd_default_protocol|trim) )
+  tags: [ "configure" ]
+
 
 #
 # Editing /etc/host files
@@ -132,12 +148,14 @@
 
 - set_fact:
     newline: "\n"
+  tags: [ "configure" ]
 
 - name: "Preparing /etc/hosts block with name,ip mapping to all ansible managed LXD containers"
   set_fact:
     managed_hosts_section: "{%- for item in ipv4addr.results -%}
                               {{item.stdout}} {{item.item.name}} {{ newline }}
                             {%- endfor -%}"
+  tags: [ "configure" ]
 
 - name: "Applying the block to vmhost's /etc/hosts file"
   blockinfile:
@@ -145,6 +163,7 @@
     block: >
       {{ managed_hosts_section }}
     marker: "# {mark} ansible managed section of LXD containers"
+  tags: [ "configure" ]
 
 
 - name: "Applying the block to all LXD containers /etc/hosts file"
@@ -154,5 +173,6 @@
       {{ managed_hosts_section }}
     marker: "# {mark} ansible managed section of LXD containers"
   delegate_to: "{{ item.name }}"
-  with_items: "{{ lxd_provisioning_inventory }}"
+  with_items: "{{ provisioning.lxd }}"
   when: (item.name is defined and item.name|trim)
+  tags: [ "configure" ]
