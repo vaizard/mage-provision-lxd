@@ -1,4 +1,4 @@
-# mage.lxd-provisioning
+# mage-provision-lxd
 
 An ansible role to manage lxd containers on a host which
 
@@ -47,7 +47,7 @@ three lxd containers
             image: "fedora/25"
   roles:
     - role: "mage-vmhost"
-    - role: "mage.lxd-provisioning"
+    - role: "mage-provision-lxd"
     - role: "mage-update"
 
 - hosts: lxd
